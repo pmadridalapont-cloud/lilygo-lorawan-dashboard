@@ -1,3 +1,6 @@
+from fpdf import FPDF
+from datetime import datetime
+
 import streamlit as st
 import paho.mqtt.client as mqtt
 import json
@@ -44,6 +47,9 @@ data = store["data"]
 
 st.title("📡 Dashboard LilyGO LoRaWAN")
 
+if "historial" not in st.session_state:
+    st.session_state.historial = []
+
 if data:
     uplink = data.get("uplink_message", {})
     gateways = uplink.get("rx_metadata", [])
@@ -51,6 +57,24 @@ if data:
 
     frecuencia = settings.get("frequency", "N/A")
     toa = uplink.get("consumed_airtime", "N/A")
+    
+    paquete = {
+    "fecha_registro": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    "device": data.get("end_device_ids", {}).get("device_id", "N/A"),
+    "frame_counter": uplink.get("f_cnt", "N/A"),
+    "payload": uplink.get("frm_payload", "N/A"),
+    "gateways": len(gateways),
+    "frecuencia": frecuencia,
+    "toa": toa
+}
+
+for i, gw in enumerate(gateways, start=1):
+    paquete[f"gateway_{i}"] = gw.get("gateway_ids", {}).get("gateway_id", "N/A")
+    paquete[f"rssi_{i}"] = gw.get("rssi", "N/A")
+    paquete[f"snr_{i}"] = gw.get("snr", "N/A")
+
+if not st.session_state.historial or st.session_state.historial[-1] != paquete:
+    st.session_state.historial.append(paquete)
 
     st.success("Datos recibidos desde TTN")
 
@@ -132,6 +156,48 @@ if data:
 
     with st.expander("JSON completo recibido"):
         st.json(data)
+        
+        st.subheader("📦 Historial de paquetes")
+
+historial_df = pd.DataFrame(st.session_state.historial)
+
+st.dataframe(historial_df, use_container_width=True)
+
+csv = historial_df.to_csv(index=False).encode("utf-8")
+
+st.download_button(
+    "⬇️ Descargar CSV",
+    csv,
+    "historial_lilygo.csv",
+    "text/csv"
+)
+
+def crear_pdf(df):
+    pdf = FPDF()
+    pdf.add_page()
+
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Informe LilyGO LoRaWAN", ln=True)
+
+    pdf.set_font("Arial", "", 10)
+
+    for idx, row in df.iterrows():
+        pdf.ln(5)
+        pdf.cell(0, 8, f"Paquete {idx+1}", ln=True)
+
+        for col, value in row.items():
+            pdf.multi_cell(0, 6, f"{col}: {value}")
+
+    return pdf.output(dest="S").encode("latin-1")
+
+pdf_bytes = crear_pdf(historial_df)
+
+st.download_button(
+    "📄 Descargar PDF",
+    pdf_bytes,
+    "informe_lilygo.pdf",
+    "application/pdf"
+)
 
 else:
     st.info("Esperando datos MQTT...")
