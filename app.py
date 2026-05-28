@@ -9,7 +9,7 @@ import pandas as pd
 
 APP_ID = "lilygo-pma"
 USERNAME = APP_ID + "@ttn"
-PASSWORD = st.secrets["TTN_API_KEY"]
+PASSWORD = st.secrets["TTN_API_KEY"]x
 
 HOST = "eu1.cloud.thethings.network"
 PORT = 8883
@@ -199,7 +199,7 @@ st.download_button(
     "application/pdf"
 )
 
-else:
+if not data:
     st.info("Esperando datos MQTT...")
 
 time.sleep(3)
