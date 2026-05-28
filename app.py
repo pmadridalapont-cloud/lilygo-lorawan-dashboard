@@ -68,10 +68,10 @@ if data:
     "toa": toa
 }
 
-for i, gw in enumerate(gateways, start=1):
-    paquete[f"gateway_{i}"] = gw.get("gateway_ids", {}).get("gateway_id", "N/A")
-    paquete[f"rssi_{i}"] = gw.get("rssi", "N/A")
-    paquete[f"snr_{i}"] = gw.get("snr", "N/A")
+    for i, gw in enumerate(gateways, start=1):
+        paquete[f"gateway_{i}"] = gw.get("gateway_ids", {}).get("gateway_id", "N/A")
+        paquete[f"rssi_{i}"] = gw.get("rssi", "N/A")
+        paquete[f"snr_{i}"] = gw.get("snr", "N/A")
 
 if not st.session_state.historial or st.session_state.historial[-1] != paquete:
     st.session_state.historial.append(paquete)
