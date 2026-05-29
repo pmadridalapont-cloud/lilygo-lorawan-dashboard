@@ -179,17 +179,27 @@ if data:
             })[["lat", "lon"]]
         )
 
-    st.subheader("📍 Localización de la LilyGO")
+    # --- SECCIÓN CORREGIDA DE LOCALIZACIÓN DE LA LILYGO ---
+    st.subheader("📍 Localización de la LilyGO (GPS Dinámico)")
 
-    st.write(f"**Latitud LilyGO:** {LILYGO_LAT}")
-    st.write(f"**Longitud LilyGO:** {LILYGO_LON}")
+    if lilygo_lat is not None and lilygo_lon is not None:
+        st.info(f"🛰️ Satélites del GPS en uso: **{gps_satellites}**")
+        st.write(f"**Latitud LilyGO:** {lilygo_lat}")
+        st.write(f"**Longitud LilyGO:** {lilygo_lon}")
 
-    lilygo_df = pd.DataFrame({
-        "lat": [LILYGO_LAT],
-        "lon": [LILYGO_LON]
-    })
-
-    st.map(lilygo_df)
+        lilygo_df = pd.DataFrame({
+            "lat": [lilygo_lat],
+            "lon": [lilygo_lon]
+        })
+        st.map(lilygo_df)
+    else:
+        st.warning("⚠️ La LilyGO está transmitting, pero el GPS todavía no tiene FIX (Buscando satélites...).")
+        st.write("**Latitud LilyGO:** Sin Fix")
+        st.write("**Longitud LilyGO:** Sin Fix")
+        
+        # Ubicación estática de respaldo (Valencia) para que el mapa no se rompa
+        respaldo_df = pd.DataFrame({"lat": [39.4825], "lon": [-0.3463]})
+        st.map(respaldo_df)
 
     with st.expander("JSON completo recibido"):
         st.json(data)
