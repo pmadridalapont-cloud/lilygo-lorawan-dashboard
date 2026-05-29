@@ -17,27 +17,22 @@ HOST = "eu1.cloud.thethings.network"
 PORT = 8883
 TOPIC = f"v3/{USERNAME}/devices/+/up"
 
-# --- FUNCIÓN PARA DECORIFICAR EL PAYLOAD DEL GPS ---
+# --- DECODIFICADOR DE PAYLOAD ---
 def decode_payload(payload_b64):
     try:
         if not payload_b64 or payload_b64 == "N/A":
             return None, None, 0
             
-        # Convertir de Base64 a bytes
         payload_bytes = base64.b64decode(payload_b64)
         
-        # Verificar que tenga los 10 bytes esperados (4 lat + 4 lon + 2 sat)
         if len(payload_bytes) < 10:
             return None, None, 0
             
-        # Desempaquetar bytes (Formato binario Big Endian)
         lat_raw, lon_raw, sat = struct.unpack(">iiH", payload_bytes[:10])
         
-        # Recuperar los decimales originales dividiendo por 1,000,000
         latitud = lat_raw / 1000000.0
         longitud = lon_raw / 1000000.0
         
-        # Validación básica de coordenadas lógicas terrestres
         if latitud == 0.0 and longitud == 0.0:
             return None, None, 0
             
@@ -77,7 +72,7 @@ st.title("📡 Dashboard LilyGO LoRaWAN")
 if "historial" not in st.session_state:
     st.session_state.historial = []
 
-# --- SOLUCIÓN 1: INICIALIZACIÓN GLOBAL DE LAS VARIABLES ---
+# Inicialización por defecto de variables
 lilygo_lat = None
 lilygo_lon = None
 gps_satellites = 0
@@ -91,7 +86,6 @@ if data:
     toa = uplink.get("consumed_airtime", "N/A")
     frm_payload = uplink.get("frm_payload", "N/A")
     
-    # Extraer y decodificar coordenadas dinámicas desde el payload binario
     lilygo_lat, lilygo_lon, gps_satellites = decode_payload(frm_payload)
     
     paquete = {
@@ -126,7 +120,6 @@ if data:
     st.subheader("📡 Gateways que han recibido la LilyGO")
 
     rows = []
-
     for i, gw in enumerate(gateways, start=1):
         gw_id = gw.get("gateway_ids", {}).get("gateway_id", "N/A")
         rssi = gw.get("rssi", "N/A")
@@ -155,7 +148,6 @@ if data:
 
         with st.container(border=True):
             st.markdown(f"### Gateway {i}: `{gw_id}`")
-
             a, b, c, d = st.columns(4)
             a.metric("RSSI", f"{rssi} dBm")
             b.metric("SNR", snr)
@@ -174,14 +166,9 @@ if data:
     map_df = df.dropna(subset=["Latitud", "Longitud"])
     if not map_df.empty:
         st.subheader("🗺️ Localización de gateways")
-        st.map(
-            map_df.rename(columns={
-                "Latitud": "lat",
-                "Longitud": "lon"
-            })[["lat", "lon"]]
-        )
+        st.map(map_df.rename(columns={"Latitud": "lat", "Longitud": "lon"})[["lat", "lon"]])
 
-    # --- SOLUCIÓN 2: CONTROL DE MAPA SEGURO DENTRO DE 'IF DATA' ---
+    # --- MAPA DINÁMICO CORREGIDO SIN ERRORES DE SINTAXIS ---
     st.subheader("📍 Localización de la LilyGO (GPS Dinámico)")
 
     if lilygo_lat is not None and lilygo_lon is not None:
@@ -189,10 +176,7 @@ if data:
         st.write(f"**Latitud LilyGO:** {lilygo_lat}")
         st.write(f"**Longitud LilyGO:** {lilygo_lon}")
 
-        lilygo_df = pd.DataFrame({
-            "lat": [lilygo_lat],
-            "lon": [lilygo_lon]
-        })
+        lilygo_df = pd.DataFrame({"lat": [lilygo_lat], "lon": [lilygo_lon]})
         st.map(lilygo_df)
     else:
         st.warning("⚠️ La LilyGO está transmitiendo, pero el GPS todavía no tiene FIX (0 satélites). Mostrando posición de respaldo...")
